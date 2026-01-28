@@ -1,0 +1,87 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="card shadow">
+    <div class="card-header bg-white">
+        <h4>Registrar Nuevo Socio</h4>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('nuevo_socio') }}" id="formSocio" novalidate>
+            
+            <div class="mb-3">
+                <label class="form-label">Nombre Completo</label>
+                <input type="text" name="nombre" class="form-control" required>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Cédula de Ciudadanía</label>
+                <input type="text" 
+                       id="inputCedula"
+                       name="cedula" 
+                       class="form-control" 
+                       inputmode="numeric" 
+                       placeholder="Ej: 1085333444"
+                       required>
+                <div id="errorCedula" class="invalid-feedback">
+                    Solo se permiten números.
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Teléfono de Contacto</label>
+                <input type="text" 
+                       id="inputTelefono"
+                       name="telefono" 
+                       class="form-control" 
+                       inputmode="numeric"
+                       placeholder="Ej: 3102223344">
+                <div id="errorTelefono" class="invalid-feedback">
+                    Solo se permiten números.
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-success" id="btnGuardar">Guardar Socio</button>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Esta función se ejecuta apenas carga la página
+    document.addEventListener("DOMContentLoaded", function() {
+        
+        // Función reutilizable para validar que solo sean números
+        function validarSoloNumeros(inputElement, errorElement) {
+            inputElement.addEventListener('input', function(e) {
+                let valorOriginal = this.value;
+                
+                // Expresión regular: Reemplaza todo lo que NO sea un número (0-9) por vacío
+                let valorLimpio = valorOriginal.replace(/[^0-9]/g, '');
+
+                if (valorOriginal !== valorLimpio) {
+                    // Si el usuario escribió una letra, la borramos inmediatamente
+                    this.value = valorLimpio;
+                    
+                    // Mostramos el error visualmente (Clases de Bootstrap)
+                    this.classList.add('is-invalid'); 
+                    errorElement.style.display = 'block';
+                } else {
+                    // Si todo está bien, quitamos el rojo
+                    this.classList.remove('is-invalid');
+                    errorElement.style.display = 'none';
+                }
+            });
+        }
+
+        // 1. Configurar validación para Cédula
+        const cedulaInput = document.getElementById('inputCedula');
+        const cedulaError = document.getElementById('errorCedula');
+        validarSoloNumeros(cedulaInput, cedulaError);
+
+        // 2. Configurar validación para Teléfono
+        const telefonoInput = document.getElementById('inputTelefono');
+        const telefonoError = document.getElementById('errorTelefono');
+        validarSoloNumeros(telefonoInput, telefonoError);
+    });
+</script>
+{% endblock %}

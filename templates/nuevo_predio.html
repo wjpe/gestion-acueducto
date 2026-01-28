@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="card shadow col-md-8 mx-auto">
+    <div class="card-header bg-primary text-white">
+        <h4>Registrar Nuevo Predio / Medidor</h4>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label">Seleccionar Socio (Dueño)</label>
+                <select name="socio_id" class="form-select" required>
+                    <option value="" selected disabled>Seleccione un socio...</option>
+                    {% for socio in socios %}
+                    <option value="{{ socio.id }}">{{ socio.nombre }} ({{ socio.cedula }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Número de Cuenta / Matrícula</label>
+                    <input type="text" name="numero_cuenta" class="form-control" required placeholder="Ej: P-001">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Serial del Medidor</label>
+                    <input type="text" name="serial_medidor" class="form-control" required placeholder="Ej: ABC12345">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Sector / Vereda</label>
+                <select name="sector" class="form-select">
+                    <option value="Sector Alto">Sector Alto</option>
+                    <option value="Sector Bajo">Sector Bajo</option>
+                    <option value="Centro">Centro</option>
+                </select>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <button type="submit" class="btn btn-primary">Registrar Predio</button>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

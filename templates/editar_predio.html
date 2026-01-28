@@ -1,0 +1,52 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="card shadow col-md-8 mx-auto">
+    <div class="card-header bg-warning text-dark">
+        <h4>Editar Predio: {{ predio.numero_cuenta }}</h4>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label">Cambiar Dueño</label>
+                <select name="socio_id" class="form-select">
+                    {% for socio in socios %}
+                    <option value="{{ socio.id }}" {% if socio.id == predio.socio_id %}selected{% endif %}>
+                        {{ socio.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Serial del Medidor</label>
+                    <input type="text" name="serial_medidor" class="form-control" value="{{ predio.serial_medidor }}" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Estado del Servicio</label>
+                    <select name="estado" class="form-select">
+                        <option value="Activo" {% if predio.estado == 'Activo' %}selected{% endif %}>Activo</option>
+                        <option value="Suspendido" {% if predio.estado == 'Suspendido' %}selected{% endif %}>Suspendido</option>
+                        <option value="Inactivo" {% if predio.estado == 'Inactivo' %}selected{% endif %}>Inactivo</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Sector</label>
+                <select name="sector" class="form-select">
+                    <option value="Sector Alto" {% if predio.sector == 'Sector Alto' %}selected{% endif %}>Sector Alto</option>
+                    <option value="Sector Bajo" {% if predio.sector == 'Sector Bajo' %}selected{% endif %}>Sector Bajo</option>
+                    <option value="Centro" {% if predio.sector == 'Centro' %}selected{% endif %}>Centro</option>
+                </select>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <button type="submit" class="btn btn-warning">Actualizar Datos</button>
+                <a href="{{ url_for('lista_predios') }}" class="btn btn-secondary">Volver</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

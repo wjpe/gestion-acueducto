@@ -1,0 +1,51 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="border-bottom pb-2">Panel de Control</h2>
+    </div>
+</div>
+
+<div class="row text-center">
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm border-primary h-100">
+            <div class="card-body">
+                <h5 class="text-muted">Socios Registrados</h5>
+                <h2 class="display-4 text-primary">{{ socios }}</h2>
+                <hr>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('lista_socios') }}" class="btn btn-outline-primary">Ver Lista de Socios</a>
+                    <a href="{{ url_for('nuevo_socio') }}" class="btn btn-primary">Registrar Nuevo Socio</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm border-success h-100">
+            <div class="card-body">
+                <h5 class="text-muted">Predios / Medidores</h5>
+                <h2 class="display-4 text-success">{{ predios }}</h2>
+                <hr>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('lista_predios') }}" class="btn btn-outline-success">Ver Inventario de Predios</a>
+                    <a href="{{ url_for('nuevo_predio') }}" class="btn btn-success">Registrar Nuevo Predio</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card bg-light">
+            <div class="card-body text-center py-4">
+                <h4 class="text-secondary">Operaciones de Cobro</h4>
+                <p>Próximamente: Registro de lecturas mensuales y generación de recibos.</p>
+                <button class="btn btn-secondary btn-lg" disabled>Iniciar Toma de Lecturas</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="card shadow">
+    <div class="card-header bg-dark text-white d-flex justify-content-between">
+        <h4>Histórico de Consumo: {{ predio.numero_cuenta }}</h4>
+        <span class="badge bg-info">Socio: {{ predio.dueno.nombre }}</span>
+    </div>
+    <div class="card-body">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Periodo (Mes/Año)</th>
+                    <th>Lectura Anterior</th>
+                    <th>Lectura Actual</th>
+                    <th>Consumo (m³)</th>
+                    <th>Fecha Registro</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lec in lecturas %}
+                <tr>
+                    <td>{{ lec.mes }}/{{ lec.anio }}</td>
+                    <td>{{ lec.lectura_anterior }}</td>
+                    <td>{{ lec.lectura_actual }}</td>
+                    <td class="fw-bold text-primary">{{ lec.consumo_mes }} m³</td>
+                    <td>{{ lec.fecha_registro.strftime('%d-%m-%Y') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

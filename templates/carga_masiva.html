@@ -1,0 +1,65 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="row">
+    <div class="col-md-6 mx-auto">
+        <div class="card shadow">
+            <div class="card-header bg-dark text-white text-center">
+                <h3>Carga Masiva de Lecturas</h3>
+            </div>
+            <div class="card-body p-4">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> 
+                    <strong>Paso 1:</strong> Descargue la plantilla con los predios actuales.<br>
+                    <strong>Paso 2:</strong> Ingrese las lecturas en la columna <code>lectura_actual</code>.<br>
+                    <strong>Paso 3:</strong> Suba el archivo aquí.
+                </div>
+                
+                <div class="d-grid mb-4">
+                    <a href="{{ url_for('descargar_plantilla') }}" class="btn btn-outline-primary">
+                        ⬇️ Descargar Plantilla Pre-llenada
+                    </a>
+                </div>
+
+                <hr>
+
+                <form method="POST" enctype="multipart/form-data" id="formCarga">
+                    <div class="mb-3">
+                        <input type="file" name="archivo_csv" class="form-control" accept=".csv" required>
+                    </div>
+                    
+                    <div id="progresoContainer" style="display: none;" class="mb-3">
+                        <p class="text-center mb-1">Procesando archivo... por favor no cierre esta ventana.</p>
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" 
+                                role="progressbar" style="width: 100%"></div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100" id="btnEnviar">
+                        Iniciar Carga de Datos
+                    </button>
+                </form>
+
+                <script>
+                    document.getElementById('formCarga').onsubmit = function() {
+                        document.getElementById('btnEnviar').style.display = 'none';
+                        document.getElementById('progresoContainer').style.display = 'block';
+                    };
+                </script>
+
+                <!---
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Subir Plantilla Diligenciada</label>
+                        <input type="file" name="archivo_csv" class="form-control" accept=".csv" required>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success btn-lg">🚀 Procesar Carga Masiva</button>
+                    </div>
+                </form>
+                -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

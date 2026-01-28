@@ -1,0 +1,38 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Listado de Socios</h2>
+    <a href="{{ url_for('nuevo_socio') }}" class="btn btn-primary">+ Nuevo Socio</a>
+</div>
+
+<div class="card shadow">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Nombre</th>
+                    <th>Cédula</th>
+                    <th>Teléfono</th>
+                    <th>Predios</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for socio in socios %}
+                <tr>
+                    <td>{{ socio.nombre }}</td>
+                    <td>{{ socio.cedula }}</td>
+                    <td>{{ socio.telefono }}</td>
+                    <td><span class="badge bg-info text-dark">{{ socio.predios|length }}</span></td>
+                    <td>
+                        <a href="{{ url_for('editar_socio', id=socio.id) }}" class="btn btn-sm btn-warning">Editar</a>
+                        <a href="{{ url_for('ver_predios_socio', id=socio.id) }}" class="btn btn-sm btn-outline-primary">Ver Predios</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
