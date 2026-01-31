@@ -52,7 +52,7 @@ class Usuario(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    rol = db.Column(db.String(20), default='operador') # admin, operador
+    rol = db.Column(db.String(20), default='operador') # admin, operador, auditor
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -60,3 +60,8 @@ class Usuario(db.Model, UserMixin):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
     
+class AuditoriaLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'))
+    accion = db.Column(db.String(255))
+    fecha = db.Column(db.DateTime, default=datetime.utcnow)

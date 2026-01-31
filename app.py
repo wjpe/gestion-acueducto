@@ -1,5 +1,5 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, Response
-from models import db, Socio, Predio, Lectura, ConfiguracionTarifa, Usuario
+from flask import Flask, render_template, request, redirect, session, url_for, flash, Response, abort
+from models import db, Socio, Predio, Lectura, ConfiguracionTarifa, Usuario, AuditoriaLog
 from datetime import datetime
 import os
 import io
@@ -8,6 +8,8 @@ import csv
 from io import TextIOWrapper
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_migrate import Migrate
+from functools import wraps
+from sqlalchemy import func
 
 
 
@@ -36,6 +38,20 @@ with app.app_context():
     if not ConfiguracionTarifa.query.first():
         # ... (código de tarifa inicial igual al anterior) ...
         pass
+
+#----- ROLES REQUERIDOS---
+def roles_requeridos(*roles):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not current_user.is_authenticated or current_user.rol not in roles:
+                flash("No tienes permisos para acceder a esta sección.", "danger")
+                return redirect(url_for('index'))
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+
 
 # --- RUTAS ---
 
@@ -74,7 +90,7 @@ def login():
 @app.route('/logout')
 def logout():
     logout_user()
-    return redirect(url_for('login.html'))
+    return redirect(url_for('login'))
 
 
 @app.route('/socio/nuevo', methods=['GET', 'POST'])
@@ -225,6 +241,7 @@ def ver_predios_socio(id):
 # --- RUTA PARA REGISTRAR LECTURA ---
 @app.route('/lectura/nueva/<int:id>', methods=['GET', 'POST'])
 @login_required # <--- Solo usuarios registrados pueden entrar
+@roles_requeridos('admin', 'operador') # Admin también puede operar
 def registrar_lectura(id):
     predio = Predio.query.get_or_404(id)
     
@@ -328,6 +345,10 @@ def carga_masiva():
                     errores.append(f"Cuenta {cuenta}: No encontrada.")
 
             db.session.commit()
+
+            log = AuditoriaLog(usuario_id=current_user.id, accion=f"Carga masiva de {tipo} realizada")
+            db.session.add(log)
+            db.session.commit()
             
             if errores:
                 for err in errores[:5]: # Mostrar solo los primeros 5 errores
@@ -414,6 +435,7 @@ def resumen_carga_view(tipo):
 
 @app.route('/usuarios/nuevo', methods=['GET', 'POST'])
 @login_required
+@roles_requeridos('admin') # Solo admin
 def nuevo_usuario():
     if current_user.rol != 'admin':
         flash('Acceso denegado. Solo administradores.', 'danger')
@@ -436,6 +458,40 @@ def nuevo_usuario():
 
     return render_template('nuevo_usuario.html')
 
+#----- AUDOTORIA DE CONSUMOS
+
+@app.route('/auditoria/consumos')
+@login_required
+@roles_requeridos('admin', 'auditor')
+def auditoria_consumos():
+    mes_actual = datetime.now().month
+    anio_actual = datetime.now().year
+    
+    # Obtenemos todas las lecturas del mes actual
+    lecturas_mes = Lectura.query.filter_by(mes=mes_actual, anio=anio_actual).all()
+    
+    reporte = []
+    for lec in lecturas_mes:
+        # Calcular promedio de los últimos 3 meses (excluyendo el actual)
+        promedio = db.session.query(func.avg(Lectura.consumo_mes)).filter(
+            Lectura.predio_id == lec.predio_id,
+            Lectura.id != lec.id
+        ).scalar() or 0
+        
+        # Determinar estado de alerta
+        alerta = False
+        if promedio > 0 and lec.consumo_mes > (promedio * 1.5):
+            alerta = True
+            
+        reporte.append({
+            'cuenta': lec.predio.numero_cuenta,
+            'socio': lec.predio.dueno.nombre,
+            'actual': lec.consumo_mes,
+            'promedio': round(promedio, 2),
+            'alerta': alerta
+        })
+        
+    return render_template('auditoria.html', reporte=reporte, mes=mes_actual, anio=anio_actual)
 
 
 if __name__ == '__main__':

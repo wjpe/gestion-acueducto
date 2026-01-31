@@ -83,4 +83,31 @@
 </div>
 {% endif %}
 
+<div class="row">
+    {% if current_user.rol in ['admin', 'operador'] %}
+    <div class="col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">Gestión Operativa</div>
+            <div class="card-body">
+                <a href="{{ url_for('lista_predios') }}" class="btn btn-outline-primary mb-2 w-100">Registrar Lecturas</a>
+                <a href="#" class="btn btn-outline-success w-100">Módulo de Cobros</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if current_user.rol in ['admin', 'auditor'] %}
+    <div class="col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header bg-dark text-white">Informes y Auditoría</div>
+            <div class="card-body">
+                <a href="#" class="btn btn-outline-dark mb-2 w-100">Histórico de Consumos</a>
+                <a href="#" class="btn btn-outline-secondary w-100">Reporte de Recaudo</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+
 {% endblock %}
