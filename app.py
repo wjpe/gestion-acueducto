@@ -1,11 +1,15 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, Response
-from models import db, Socio, Predio, Lectura, ConfiguracionTarifa
+from models import db, Socio, Predio, Lectura, ConfiguracionTarifa, Usuario
 from datetime import datetime
 import os
 import io
 import re
 import csv
 from io import TextIOWrapper
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_migrate import Migrate
+
+
 
 app = Flask(__name__)
 
@@ -13,6 +17,14 @@ app = Flask(__name__)
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'acueducto.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+migrate = Migrate(app, db)
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return Usuario.query.get(int(user_id))
 
 # NECESARIO PARA MENSAJES FLASH (Validaciones)
 app.secret_key = 'mi_clave_secreta_segura' 
@@ -28,13 +40,45 @@ with app.app_context():
 # --- RUTAS ---
 
 @app.route('/')
+@login_required # <--- Solo usuarios registrados pueden entrar
 def index():
     total_socios = Socio.query.count()
     total_predios = Predio.query.count()
     # Enviamos ambas variables al template
     return render_template('index.html', socios=total_socios, predios=total_predios)
 
+
+@login_manager.user_loader
+def load_user(user_id):
+    return Usuario.query.get(int(user_id))
+
+# RUTA LOGIN (Simplificada para empezar)
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        
+        user = Usuario.query.filter_by(username=username).first()
+        
+        # IMPORTANTE: Usamos el método check_password para comparar hashes
+        if user and user.check_password(password):
+            login_user(user)
+            flash('Bienvenido al sistema Aguamir', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('Usuario o contraseña incorrectos', 'danger')
+            
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    logout_user()
+    return redirect(url_for('login.html'))
+
+
 @app.route('/socio/nuevo', methods=['GET', 'POST'])
+@login_required # <--- Solo usuarios registrados pueden entrar
 def nuevo_socio():
     if request.method == 'POST':
         # 1. Capturamos los datos
@@ -86,12 +130,14 @@ def nuevo_socio():
 
 # --- LISTAR SOCIOS ---
 @app.route('/socios')
+@login_required # <--- Solo usuarios registrados pueden entrar
 def lista_socios():
     todos_los_socios = Socio.query.order_by(Socio.nombre).all()
     return render_template('lista_socios.html', socios=todos_los_socios)
 
 # --- EDITAR SOCIO ---
 @app.route('/socio/editar/<int:id>', methods=['GET', 'POST'])
+@login_required # <--- Solo usuarios registrados pueden entrar
 def editar_socio(id):
     socio = Socio.query.get_or_404(id)
     
@@ -109,6 +155,7 @@ def editar_socio(id):
 
 
 @app.route('/predio/nuevo', methods=['GET', 'POST'])
+@login_required # <--- Solo usuarios registrados pueden entrar
 def nuevo_predio():
     # Consultamos todos los socios para el menú desplegable
     socios = Socio.query.order_by(Socio.nombre).all()
@@ -144,11 +191,13 @@ def nuevo_predio():
     return render_template('nuevo_predio.html', socios=socios)
 
 @app.route('/predios')
+@login_required # <--- Solo usuarios registrados pueden entrar
 def lista_predios():
     predios = Predio.query.all()
     return render_template('lista_predios.html', predios=predios)
 
 @app.route('/predio/editar/<int:id>', methods=['GET', 'POST'])
+@login_required # <--- Solo usuarios registrados pueden entrar
 def editar_predio(id):
     predio = Predio.query.get_or_404(id)
     socios = Socio.query.order_by(Socio.nombre).all()
@@ -166,6 +215,7 @@ def editar_predio(id):
     return render_template('editar_predio.html', predio=predio, socios=socios)
 
 @app.route('/socio/<int:id>/predios')
+@login_required # <--- Solo usuarios registrados pueden entrar
 def ver_predios_socio(id):
     socio = Socio.query.get_or_404(id)
     # Gracias a backref='predios', podemos hacer esto:
@@ -174,6 +224,7 @@ def ver_predios_socio(id):
 
 # --- RUTA PARA REGISTRAR LECTURA ---
 @app.route('/lectura/nueva/<int:id>', methods=['GET', 'POST'])
+@login_required # <--- Solo usuarios registrados pueden entrar
 def registrar_lectura(id):
     predio = Predio.query.get_or_404(id)
     
@@ -215,6 +266,7 @@ def registrar_lectura(id):
 
 
 @app.route('/predio/<int:id>/historial')
+@login_required # <--- Solo usuarios registrados pueden entrar
 def historial_predio(id):
     predio = Predio.query.get_or_404(id)
     # Traemos las lecturas de la más reciente a la más antigua
@@ -224,6 +276,7 @@ def historial_predio(id):
 
 # --- RUTA PARA CARGA MASIVA DE LECTURAS ---
 @app.route('/lectura/carga-masiva', methods=['GET', 'POST'])
+@login_required # <--- Solo usuarios registrados pueden entrar
 def carga_masiva():
     if request.method == 'POST':
         if 'archivo_csv' not in request.files:
@@ -291,6 +344,7 @@ def carga_masiva():
 
 # --- RUTA PARA DESCARGAR CSV PARA CARGA MASIVA DE LECTURAS ---
 @app.route('/lectura/descargar-plantilla')
+@login_required # <--- Solo usuarios registrados pueden entrar
 def descargar_plantilla():
     # Obtener todos los predios
     predios = Predio.query.all()
@@ -315,6 +369,7 @@ def descargar_plantilla():
 
 # --- CARGA MASIVA DE SOCIOS ---
 @app.route('/socio/carga-masiva', methods=['GET', 'POST'])
+@login_required # <--- Solo usuarios registrados pueden entrar
 def carga_masiva_socios():
     if request.method == 'POST':
         archivo = request.files['archivo_csv']
@@ -352,9 +407,35 @@ def carga_masiva_socios():
 
 # --- VISTA DE RESUMEN ---
 @app.route('/carga/resumen/<tipo>')
+@login_required # <--- Solo usuarios registrados pueden entrar
 def resumen_carga_view(tipo):
     resumen = session.get('resumen_carga', {'exitos': 0, 'errores': []})
     return render_template('resumen_carga.html', resumen=resumen, tipo=tipo)
+
+@app.route('/usuarios/nuevo', methods=['GET', 'POST'])
+@login_required
+def nuevo_usuario():
+    if current_user.rol != 'admin':
+        flash('Acceso denegado. Solo administradores.', 'danger')
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        username = request.form['username'].strip()
+        password = request.form['password']
+        rol = request.form['rol']
+
+        if Usuario.query.filter_by(username=username).first():
+            flash('El nombre de usuario ya existe.', 'warning')
+        else:
+            nuevo = Usuario(username=username, rol=rol)
+            nuevo.set_password(password) # Encriptación automática
+            db.session.add(nuevo)
+            db.session.commit()
+            flash(f'Usuario {username} creado con éxito.', 'success')
+            return redirect(url_for('index'))
+
+    return render_template('nuevo_usuario.html')
+
 
 
 if __name__ == '__main__':

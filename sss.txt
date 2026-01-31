@@ -1,0 +1,114 @@
+<nav class="navbar navbar-expand-lg bg-body-tertiary">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#">Navbar</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link active" aria-current="page" href="#">Home</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#">Features</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#">Pricing</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link disabled" aria-disabled="true">Disabled</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+
+
+
+<nav class="navbar navbar-dark bg-primary mb-4">
+        
+        <a class="navbar-brand" href="{{ url_for('index') }}">💧 Gestión Acueducto</a>
+        <div>
+            <a href="{{ url_for('lista_socios') }}" class="btn btn-light btn-sm">Ver Socios</a>
+            <a href="{{ url_for('nuevo_socio') }}" class="btn btn-light btn-sm">Nuevo Socio</a>
+        </div>
+</nav>
+
+
+
+@app.route('/socio/nuevo', methods=['GET', 'POST'])
+def nuevo_socio():
+    if request.method == 'POST':
+        nombre = request.form.get('nombre')
+        cedula = request.form.get('cedula')
+        telefono = request.form.get('telefono')
+
+        # VALIDACIÓN 1: ¿Está vacío? (El navegador a veces envía vacío si hay letras)
+        if not cedula:
+            flash('Error: La cédula es obligatoria y debe ser un número.', 'danger')
+            return redirect(url_for('nuevo_socio'))
+
+        # VALIDACIÓN 2: ¿Es un número positivo?
+        if not cedula.isdigit():
+            flash('Error: La cédula contiene caracteres no permitidos. Use solo números.', 'danger')
+            return redirect(url_for('nuevo_socio'))
+
+        # VALIDACIÓN 3: Duplicados
+        socio_existente = Socio.query.filter_by(cedula=cedula).first()
+        if socio_existente:
+            flash('Error: Esta cédula ya está registrada.', 'warning')
+            return redirect(url_for('nuevo_socio'))
+
+        # Si pasa las validaciones, guardar
+        try:
+            nuevo = Socio(nombre=nombre, cedula=cedula, telefono=telefono)
+            db.session.add(nuevo)
+            db.session.commit()
+            flash('Socio guardado exitosamente', 'success')
+            return redirect(url_for('lista_socios'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al guardar en la base de datos: {str(e)}', 'danger')
+            return redirect(url_for('nuevo_socio'))
+            
+    return render_template('nuevo_socio.html')
+
+
+
+
+
+    @app.route('/socio/nuevo', methods=['GET', 'POST'])
+def nuevo_socio():
+    if request.method == 'POST':
+        nombre = request.form['nombre']
+        cedula = request.form['cedula']
+        telefono = request.form['telefono']
+
+        # --- VALIDACIONES DE SERVIDOR ---
+        
+        # 1. Validar que la cédula sea numérica
+        if not cedula.isdigit():
+            flash('Error: La cédula debe contener solo números.', 'danger')
+            return redirect(url_for('nuevo_socio'))
+
+        # 2. Validar que el teléfono sea numérico (si se ingresó algo)
+        if telefono and not telefono.isdigit():
+            flash('Error: El teléfono debe contener solo números.', 'danger')
+            return redirect(url_for('nuevo_socio'))
+
+        # 3. Validar que la cédula no exista ya en la BD
+        socio_existente = Socio.query.filter_by(cedula=cedula).first()
+        if socio_existente:
+            flash('Error: Esa cédula ya está registrada en el sistema.', 'warning')
+            return redirect(url_for('nuevo_socio'))
+
+        # Si todo está bien, guardamos
+        nuevo = Socio(nombre=nombre, cedula=cedula, telefono=telefono)
+        db.session.add(nuevo)
+        db.session.commit()
+        
+        flash('Socio creado exitosamente.', 'success')
+        return redirect(url_for('index')) # CORREGIDO: url_for en lugar de string directo
+    
+    return render_template('nuevo_socio.html')
