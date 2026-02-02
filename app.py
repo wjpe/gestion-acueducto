@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, session, url_for, flash, Response, abort
-from models import db, Socio, Predio, Lectura, ConfiguracionTarifa, Usuario, AuditoriaLog
+from models import db, Socio, Predio, Lectura, ConfiguracionTarifa, Usuario, AuditoriaLog, Configuracion
 from datetime import datetime
 import os
 import io
@@ -345,8 +345,11 @@ def carga_masiva():
                     errores.append(f"Cuenta {cuenta}: No encontrada.")
 
             db.session.commit()
+            
+            # DEFINIMOS LA VARIABLE O EL TEXTO DIRECTAMENTE
+            tipo_operacion = "Lecturas Mensuales"
 
-            log = AuditoriaLog(usuario_id=current_user.id, accion=f"Carga masiva de {tipo} realizada")
+            log = AuditoriaLog(usuario_id=current_user.id, accion=f"Carga masiva de {tipo_operacion} realizada")
             db.session.add(log)
             db.session.commit()
             
@@ -493,6 +496,37 @@ def auditoria_consumos():
         
     return render_template('auditoria.html', reporte=reporte, mes=mes_actual, anio=anio_actual)
 
+
+#--- CONFIGURACION DE TARIFAS
+@app.route('/configuracion', methods=['GET', 'POST'])
+@login_required
+@roles_requeridos('admin')
+def configurar_tarifas():
+    # Obtener la primera configuración o crear una por defecto
+    config = Configuracion.query.first()
+    if not config:
+        config = Configuracion()
+        db.session.add(config)
+        db.session.commit()
+
+    if request.method == 'POST':
+        config.nombre_acueducto = request.form['nombre']
+        config.cargo_fijo = float(request.form['cargo_fijo'])
+        config.valor_m3 = float(request.form['valor_m3'])
+        config.limite_basico = int(request.form['limite_basico'])
+        config.valor_m3_exceso = float(request.form['valor_m3_exceso'])
+        
+        db.session.commit()
+        
+        # Registrar en la bitácora de auditoría
+        log = AuditoriaLog(usuario_id=current_user.id, accion="Actualizó tarifas del sistema")
+        db.session.add(log)
+        db.session.commit()
+        
+        flash('Configuración actualizada correctamente', 'success')
+        return redirect(url_for('index'))
+
+    return render_template('configuracion.html', config=config)
 
 if __name__ == '__main__':
     app.run(debug=True)

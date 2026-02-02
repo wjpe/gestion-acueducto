@@ -13,9 +13,7 @@
     <title>Acueducto Comunitario</title>
     
     <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
-</head>
-    
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+
 </head>
 <body class="bg-light">
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
@@ -36,6 +34,7 @@
             <div class="ms-lg-3">
                 <a href="{{ url_for('nuevo_socio') }}" class="btn btn-light btn-sm"> + Socio</a>
                 <a href="{{ url_for('nuevo_predio') }}" class="btn btn-outline-light btn-sm"> + Predio</a>
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm"> Logout </a>
             </div>
         </div>
     </div>

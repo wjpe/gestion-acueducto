@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timezone
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -64,4 +64,13 @@ class AuditoriaLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'))
     accion = db.Column(db.String(255))
-    fecha = db.Column(db.DateTime, default=datetime.utcnow)
+    fecha = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+
+class Configuracion(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    cargo_fijo = db.Column(db.Float, default=5000.0)
+    valor_m3 = db.Column(db.Float, default=1200.0)
+    limite_basico = db.Column(db.Integer, default=20) # m3 subsidiados o tope
+    valor_m3_exceso = db.Column(db.Float, default=2500.0)
+    mes_actual = db.Column(db.Integer)
+    anio_actual = db.Column(db.Integer)
