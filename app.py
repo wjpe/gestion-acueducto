@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, session, url_for, flash, Response, abort
 from models import db, Socio, Predio, Lectura, ConfiguracionTarifa, Usuario, AuditoriaLog, Configuracion
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 import io
 import re
@@ -527,6 +527,54 @@ def configurar_tarifas():
         return redirect(url_for('index'))
 
     return render_template('configuracion.html', config=config)
+
+@app.route('/facturacion/vista-previa')
+@login_required
+@roles_requeridos('admin', 'operador', 'auditor')
+def vista_previa_facturacion():
+    # 1. Obtener tarifas actuales
+    config = Configuracion.query.first()
+    if not config:
+        flash("Debe configurar las tarifas antes de ver la facturación.", "warning")
+        return redirect(url_for('configurar_tarifas'))
+
+    # 2. Obtener lecturas del mes actual
+    ahora = datetime.now(timezone.utc)
+    #lecturas = Lectura.query.filter_by(mes=ahora.month, anio=ahora.year).all()
+    lecturas = Lectura.query.all()
+    
+    facturas_previa = []
+    total_recaudo_esperado = 0
+
+    for lec in lecturas:
+        consumo = lec.consumo_mes
+        subtotal_basico = 0
+        subtotal_exceso = 0
+        
+        # Lógica de cobro por niveles
+        if consumo <= config.limite_basico:
+            subtotal_basico = consumo * config.valor_m3
+        else:
+            subtotal_basico = config.limite_basico * config.valor_m3
+            subtotal_exceso = (consumo - config.limite_basico) * config.valor_m3_exceso
+            
+        total_pagar = config.cargo_fijo + subtotal_basico + subtotal_exceso
+        total_recaudo_esperado += total_pagar
+        
+        facturas_previa.append({
+            'cuenta': lec.predio.numero_cuenta,
+            'socio': lec.predio.dueno.nombre,
+            'consumo': consumo,
+            'cargo_fijo': config.cargo_fijo,
+            'valor_consumo': subtotal_basico + subtotal_exceso,
+            'total': total_pagar
+        })
+
+    return render_template('vista_previa_facturacion.html', 
+                           facturas=facturas_previa, 
+                           total_recaudo=total_recaudo_esperado,
+                           mes=ahora.month, anio=ahora.year)
+
 
 if __name__ == '__main__':
     app.run(debug=True)

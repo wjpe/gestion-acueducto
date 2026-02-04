@@ -1,0 +1,56 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h3><i class="bi bi-calculator"></i> Pre-Facturación: Período {{ mes }}/{{ anio }}</h3>
+        <p class="text-muted">Revise los valores antes de generar los comprobantes oficiales.</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <div class="card bg-success text-white shadow-sm">
+            <div class="card-body py-2">
+                <small>Recaudo Estimado Total</small>
+                <h4 class="mb-0">$ {{ "{:,.2f}".format(total_recaudo) }}</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover" id="tablaFacturas">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Cuenta</th>
+                        <th>Socio</th>
+                        <th>Consumo (m³)</th>
+                        <th>Cargo Fijo</th>
+                        <th>Vlr. Consumo</th>
+                        <th class="text-end">Total a Pagar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in facturas %}
+                    <tr>
+                        <td>{{ f.cuenta }}</td>
+                        <td>{{ f.socio }}</td>
+                        <td>{{ f.consumo }}</td>
+                        <td>$ {{ "{:,.0f}".format(f.cargo_fijo) }}</td>
+                        <td>$ {{ "{:,.0f}".format(f.valor_consumo) }}</td>
+                        <td class="text-end fw-bold text-primary">$ {{ "{:,.0f}".format(f.total) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer d-flex justify-content-between">
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Regresar</a>
+        {% if current_user.rol in ['admin', 'operador'] %}
+        <button class="btn btn-primary btn-lg">
+            <i class="bi bi-file-earmark-pdf"></i> Generar 300 Recibos (PDF)
+        </button>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
