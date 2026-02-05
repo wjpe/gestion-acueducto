@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="row">
+    <div class="col-md-5">
+        <div class="card shadow">
+            <div class="card-header bg-dark text-white">
+                <h5><i class="bi bi-search"></i> Buscar Socio / Cuenta</h5>
+            </div>
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('modulo_pos') }}">
+                    <div class="input-group">
+                        <input type="text" name="search" class="form-control form-control-lg" placeholder="N° Cuenta o Nombre...">
+                        <button class="btn btn-primary" type="submit">Buscar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        {% if facturas %}
+            {% for f in facturas %}
+            <div class="card mb-3 border-primary shadow">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <h5>Cuenta: {{ f.lectura.predio.numero_cuenta }}</h5>
+                        <h4 class="text-primary">$ {{ "{:,.0f}".format(f.total_a_pagar) }}</h4>
+                    </div>
+                    <p class="mb-1"><strong>Socio:</strong> {{ f.lectura.predio.dueno.nombre }}</p>
+                    <p class="mb-1"><strong>Consumo:</strong> {{ f.lectura.consumo_mes }} m³</p>
+                    <hr>
+                    <form action="{{ url_for('registrar_pago', factura_id=f.id) }}" method="POST">
+                        <button type="submit" class="btn btn-success btn-lg w-100">
+                            <i class="bi bi-cash-stack"></i> REGISTRAR PAGO Y RECIBO
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info">Ingrese un número de cuenta para cobrar.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

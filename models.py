@@ -74,3 +74,20 @@ class Configuracion(db.Model):
     valor_m3_exceso = db.Column(db.Float, default=2500.0)
     mes_actual = db.Column(db.Integer)
     anio_actual = db.Column(db.Integer)
+
+class Factura(db.Model):
+    __tablename__ = 'factura' # Forzamos el nombre de la tabla
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # IMPORTANTE: Cambia 'Lectura.id' por 'lectura.id' (en minúsculas)
+    lectura_id = db.Column(db.Integer, db.ForeignKey('lecturas.id'), nullable=False)
+    
+    numero_factura = db.Column(db.String(20), unique=True)
+    total_a_pagar = db.Column(db.Float)
+    estado = db.Column(db.String(20), default='Pendiente')
+    fecha_emision = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    fecha_pago = db.Column(db.DateTime, nullable=True)
+    metodo_pago = db.Column(db.String(50), nullable=True)
+    
+    # La relación sí puede usar el nombre de la Clase (Mayúscula)
+    lectura = db.relationship('Lectura', backref='factura_asociada')

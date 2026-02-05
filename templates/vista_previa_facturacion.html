@@ -47,9 +47,17 @@
     <div class="card-footer d-flex justify-content-between">
         <a href="{{ url_for('index') }}" class="btn btn-secondary">Regresar</a>
         {% if current_user.rol in ['admin', 'operador'] %}
+        
+        <form action="{{ url_for('generar_periodo') }}" method="POST" onsubmit="return confirm('¿Está seguro de generar las facturas de cobro para todos los socios?');">
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi- lightning-charge"></i> GENERAR FACTURAS Y PASAR AL POS
+            </button>
+        </form>
+        <!---
         <button class="btn btn-primary btn-lg">
             <i class="bi bi-file-earmark-pdf"></i> Generar 300 Recibos (PDF)
         </button>
+        -->
         {% endif %}
     </div>
 </div>

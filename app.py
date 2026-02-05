@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, session, url_for, flash, Response, abort
-from models import db, Socio, Predio, Lectura, ConfiguracionTarifa, Usuario, AuditoriaLog, Configuracion
+from models import db, Socio, Predio, Lectura, ConfiguracionTarifa, Usuario, AuditoriaLog, Configuracion, Factura
 from datetime import datetime, timezone
 import os
 import io
@@ -575,6 +575,95 @@ def vista_previa_facturacion():
                            total_recaudo=total_recaudo_esperado,
                            mes=ahora.month, anio=ahora.year)
 
+
+@app.route('/facturacion/emitir-masivo', methods=['POST'])
+@login_required
+@roles_requeridos('admin', 'operador')
+def emitir_facturas_masivo():
+    config = Configuracion.query.first()
+    ahora = datetime.now(timezone.utc)
+    # Buscamos lecturas que NO tengan factura asociada todavía
+    lecturas = Lectura.query.filter_by(mes=ahora.month, anio=ahora.year).all()
+    
+    contador = 0
+    for lec in lecturas:
+        if not Factura.query.filter_by(lectura_id=lec.id).first():
+            # (Aquí va la lógica de cálculo que ya hicimos...)
+            consumo = lec.consumo_mes
+            # ... calculo de total_pagar ...
+            
+            nueva_factura = Factura(
+                lectura_id=lec.id,
+                numero_factura=f"FAC-{ahora.year}-{lec.predio.numero_cuenta}-{lec.id}",
+                total_a_pagar=total_pagar,
+                estado='Pendiente'
+            )
+            db.session.add(nueva_factura)
+            contador += 1
+    
+    db.session.commit()
+    flash(f"Se han generado {contador} facturas correctamente.", "success")
+    return redirect(url_for('modulo_pos'))
+
+
+@app.route('/pos', methods=['GET', 'POST'])
+@login_required
+@roles_requeridos('admin', 'operador')
+def modulo_pos():
+    search = request.args.get('search', '')
+    facturas_pendientes = []
+    
+    if search:
+        # Buscar por cuenta de predio o nombre de socio
+        facturas_pendientes = Factura.query.join(Lectura).join(Predio).join(Socio).filter(
+            (Predio.numero_cuenta.like(f"%{search}%")) | (Socio.nombre.like(f"%{search}%")),
+            Factura.estado == 'Pendiente'
+        ).all()
+
+    return render_template('pos.html', facturas=facturas_pendientes)
+
+@app.route('/pos/pagar/<int:factura_id>', methods=['POST'])
+def registrar_pago(factura_id):
+    factura = Factura.query.get_or_404(factura_id)
+    factura.estado = 'Pagado'
+    factura.fecha_pago = datetime.now(timezone.utc)
+    factura.metodo_pago = 'Efectivo' # Por defecto en oficina
+    
+    db.session.commit()
+    flash(f"Pago registrado para la cuenta {factura.lectura.predio.numero_cuenta}", "success")
+    # Aquí es donde dispararíamos la impresión del mini-recibo
+    return redirect(url_for('modulo_pos'))
+
+@app.route('/facturacion/generar-periodo', methods=['POST'])
+@login_required
+@roles_requeridos('admin', 'operador')
+def generar_periodo():
+    config = Configuracion.query.first()
+    # Obtenemos todas las lecturas (puedes filtrar por mes/año si prefieres)
+    lecturas_sin_factura = Lectura.query.outerjoin(Factura).filter(Factura.id == None).all()
+    
+    count = 0
+    for lec in lecturas_sin_factura:
+        # Lógica de cálculo (puedes moverla a una función aparte luego)
+        consumo = lec.consumo_mes
+        if consumo <= config.limite_basico:
+            total = config.cargo_fijo + (consumo * config.valor_m3)
+        else:
+            total = config.cargo_fijo + (config.limite_basico * config.valor_m3) + \
+                    ((consumo - config.limite_basico) * config.valor_m3_exceso)
+        
+        nueva_f = Factura(
+            lectura_id=lec.id,
+            numero_factura=f"FAC-{lec.predio.numero_cuenta}-{lec.id}",
+            total_a_pagar=total,
+            estado='Pendiente'
+        )
+        db.session.add(nueva_f)
+        count += 1
+    
+    db.session.commit()
+    flash(f"¡Éxito! Se generaron {count} facturas para cobrar en el POS.", "success")
+    return redirect(url_for('modulo_pos'))
 
 if __name__ == '__main__':
     app.run(debug=True)
