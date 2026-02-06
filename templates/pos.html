@@ -1,44 +1,80 @@
 {% extends "layout.html" %}
 {% block content %}
 <div class="row">
-    <div class="col-md-5">
-        <div class="card shadow">
-            <div class="card-header bg-dark text-white">
-                <h5><i class="bi bi-search"></i> Buscar Socio / Cuenta</h5>
-            </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm mb-3">
             <div class="card-body">
-                <form method="GET" action="{{ url_for('modulo_pos') }}">
+                <form method="GET">
                     <div class="input-group">
-                        <input type="text" name="search" class="form-control form-control-lg" placeholder="N° Cuenta o Nombre...">
-                        <button class="btn btn-primary" type="submit">Buscar</button>
+                        <input type="text" name="search" class="form-control" placeholder="Cuenta o Nombre..." autofocus>
+                        <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i></button>
                     </div>
                 </form>
             </div>
         </div>
+
+        {% if r %}
+        <div class="card shadow border-danger">
+            <div class="card-header bg-danger text-white text-center">
+                <h5 class="mb-0">TOTAL A COBRAR</h5>
+            </div>
+            <div class="card-body text-center">
+                <h1 class="display-5 fw-bold text-danger">$ {{ "{:,.0f}".format(r.total_deuda) }}</h1>
+                <p class="badge bg-secondary">Deuda de {{ r.cantidad_meses }} mes(es)</p>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
-    <div class="col-md-7">
-        {% if facturas %}
-            {% for f in facturas %}
-            <div class="card mb-3 border-primary shadow">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <h5>Cuenta: {{ f.lectura.predio.numero_cuenta }}</h5>
-                        <h4 class="text-primary">$ {{ "{:,.0f}".format(f.total_a_pagar) }}</h4>
-                    </div>
-                    <p class="mb-1"><strong>Socio:</strong> {{ f.lectura.predio.dueno.nombre }}</p>
-                    <p class="mb-1"><strong>Consumo:</strong> {{ f.lectura.consumo_mes }} m³</p>
-                    <hr>
-                    <form action="{{ url_for('registrar_pago', factura_id=f.id) }}" method="POST">
-                        <button type="submit" class="btn btn-success btn-lg w-100">
-                            <i class="bi bi-cash-stack"></i> REGISTRAR PAGO Y RECIBO
+    <div class="col-md-8">
+        {% if r %}
+        <div class="card shadow">
+            <div class="card-header bg-dark text-white d-flex justify-content-between">
+                <span><strong>Socio:</strong> {{ r.predio.dueno.nombre }}</span>
+                <span><strong>Cuenta:</strong> {{ r.predio.numero_cuenta }}</span>
+            </div>
+            <div class="card-body">
+                <h6 class="text-muted text-uppercase mb-3">Desglose de Lecturas Pendientes</h6>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr class="small text-center">
+                                <th>Periodo</th>
+                                <th>L. Anterior</th>
+                                <th>L. Actual</th>
+                                <th>Consumo (m³)</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for d in r.detalles %}
+                            <tr class="text-center">
+                                <td>{{ d.periodo }}</td>
+                                <td>{{ d.ant }}</td>
+                                <td>{{ d.act }}</td>
+                                <td class="fw-bold">{{ d.con }}</td>
+                                <td class="text-end fw-bold text-primary">$ {{ "{:,.0f}".format(d.sub) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-grid mt-4">
+                    <form action="{{ url_for('confirmar_pago') }}" method="POST">
+                        <input type="hidden" name="predio_id" value="{{ r.predio.id }}">
+                        <button type="submit" class="btn btn-success btn-lg shadow">
+                            <i class="bi bi-cash-stack"></i> REGISTRAR PAGO Y GENERAR COMPROBANTE
                         </button>
                     </form>
                 </div>
             </div>
-            {% endfor %}
+        </div>
         {% else %}
-            <div class="alert alert-info">Ingrese un número de cuenta para cobrar.</div>
+        <div class="alert alert-light border text-center py-5">
+            <i class="bi bi-person-search display-1 text-muted"></i>
+            <p class="mt-3">Busque un socio para ver su estado de cuenta.</p>
+        </div>
         {% endif %}
     </div>
 </div>

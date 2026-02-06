@@ -1,0 +1,70 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-lg p-5" id="areaFactura" style="max-width: 800px; margin: auto; border-top: 5px solid #0d6efd;">
+        <div class="row">
+            <div class="col-8">
+                <h2 class="text-primary">{{ c.nombre_acueducto }}</h2>
+                <p>NIT: {{ c.nit }}<br>Servicio de Agua Potable</p>
+            </div>
+            <div class="col-4 text-end">
+                <h4 class="text-muted">CUENTA DE COBRO</h4>
+                <p class="fw-bold">N° {{ l.predio.numero_cuenta }}</p>
+            </div>
+        </div>
+        <hr>
+        <div class="row mb-4">
+            <div class="col-6">
+                <h6><strong>DATOS DEL SOCIO</strong></h6>
+                <p class="mb-0">{{ l.predio.dueno.nombre }}</p>
+                <p class="mb-0">Cédula: {{ l.predio.dueno.cedula }}</p>
+            </div>
+            <div class="col-6 text-end">
+                <h6><strong>DETALLE DEL PERIODO</strong></h6>
+                <p class="mb-0">Mes: {{ l.mes }} / Año: {{ l.anio }}</p>
+                <p class="mb-0">Lectura Actual: {{ l.lectura_actual }} m³</p>
+            </div>
+        </div>
+        <table class="table table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Concepto</th>
+                    <th class="text-end">Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Cargo Fijo de Mantenimiento</td>
+                    <td class="text-end">$ {{ "{:,.0f}".format(c.cargo_fijo) }}</td>
+                </tr>
+                <tr>
+                    <td>Consumo Básico ({{ l.consumo_mes if l.consumo_mes <= c.limite_basico else c.limite_basico }} m³)</td>
+                    <td class="text-end">$ {{ "{:,.0f}".format(basico) }}</td>
+                </tr>
+                {% if exceso > 0 %}
+                <tr>
+                    <td>Consumo en Exceso ({{ l.consumo_mes - c.limite_basico }} m³)</td>
+                    <td class="text-end text-danger">$ {{ "{:,.0f}".format(exceso) }}</td>
+                </tr>
+                {% endif %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th class="fs-4">TOTAL A PAGAR</th>
+                    <th class="text-end fs-4 text-primary">$ {{ "{:,.0f}".format(total) }}</th>
+                </tr>
+            </tfoot>
+        </table>
+        
+        <div class="mt-4 d-print-none text-center">
+            <form action="{{ url_for('registrar_pago_directo', lectura_id=l.id) }}" method="POST">
+                <input type="hidden" name="total" value="{{ total }}">
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="bi bi-printer"></i> PROCESAR PAGO E IMPRIMIR
+                </button>
+                <a href="{{ url_for('modulo_pos') }}" class="btn btn-outline-secondary btn-lg">CANCELAR</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

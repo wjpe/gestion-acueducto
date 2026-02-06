@@ -605,22 +605,59 @@ def emitir_facturas_masivo():
     flash(f"Se han generado {contador} facturas correctamente.", "success")
     return redirect(url_for('modulo_pos'))
 
-
-@app.route('/pos', methods=['GET', 'POST'])
+@app.route('/pos')
 @login_required
 @roles_requeridos('admin', 'operador')
 def modulo_pos():
-    search = request.args.get('search', '')
-    facturas_pendientes = []
-    
-    if search:
-        # Buscar por cuenta de predio o nombre de socio
-        facturas_pendientes = Factura.query.join(Lectura).join(Predio).join(Socio).filter(
-            (Predio.numero_cuenta.like(f"%{search}%")) | (Socio.nombre.like(f"%{search}%")),
-            Factura.estado == 'Pendiente'
-        ).all()
+    search = request.args.get('search', '').strip()
+    resultado = None
 
-    return render_template('pos.html', facturas=facturas_pendientes)
+    if search:
+        # Buscamos el predio y su dueño
+        predio = Predio.query.join(Socio).filter(
+            db.or_(
+                Predio.numero_cuenta.ilike(f"%{search}%"),
+                Socio.nombre.ilike(f"%{search}%")
+            )
+        ).first()
+
+        if predio:
+            # Buscamos lecturas que NO tengan factura pagada
+            lecturas_pendientes = Lectura.query.filter(
+                Lectura.predio_id == predio.id
+            ).outerjoin(Factura).filter(
+                db.or_(Factura.id == None, Factura.estado != 'Pagado')
+            ).order_by(Lectura.anio.desc(), Lectura.mes.desc()).all()
+
+            config = Configuracion.query.first()
+            detalles = []
+            total_deuda = 0
+
+            for l in lecturas_pendientes:
+                # Cálculo de cobro para este mes específico
+                consumo = l.consumo_mes
+                v_basico = min(consumo, config.limite_basico) * config.valor_m3
+                v_exceso = max(0, consumo - config.limite_basico) * config.valor_m3_exceso
+                subtotal = config.cargo_fijo + v_basico + v_exceso
+                
+                total_deuda += subtotal
+                detalles.append({
+                    'id': l.id,
+                    'periodo': f"{l.mes}/{l.anio}",
+                    'ant': l.lectura_anterior,
+                    'act': l.lectura_actual,
+                    'con': consumo,
+                    'sub': subtotal
+                })
+
+            resultado = {
+                'predio': predio,
+                'detalles': detalles,
+                'total_deuda': total_deuda,
+                'cantidad_meses': len(detalles)
+            }
+
+    return render_template('pos.html', r=resultado)
 
 @app.route('/pos/pagar/<int:factura_id>', methods=['POST'])
 def registrar_pago(factura_id):
@@ -664,6 +701,147 @@ def generar_periodo():
     db.session.commit()
     flash(f"¡Éxito! Se generaron {count} facturas para cobrar en el POS.", "success")
     return redirect(url_for('modulo_pos'))
+
+@app.route('/factura/previa/<int:lectura_id>')
+@login_required
+@roles_requeridos('admin', 'operador')
+def factura_previa(lectura_id):
+    lectura = Lectura.query.get_or_404(lectura_id)
+    config = Configuracion.query.first()
+    
+    # Calculamos en caliente para mostrar al socio
+    consumo = lectura.consumo_mes
+    basico = min(consumo, config.limite_basico) * config.valor_m3
+    exceso = max(0, consumo - config.limite_basico) * config.valor_m3_exceso
+    total = config.cargo_fijo + basico + exceso
+    
+    return render_template('factura_formato.html', 
+                           l=lectura, 
+                           c=config, 
+                           total=total,
+                           basico=basico,
+                           exceso=exceso)
+
+@app.route('/pos/pagar-directo/<int:lectura_id>', methods=['POST'])
+@login_required
+def registrar_pago_directo(lectura_id):
+    total = float(request.form.get('total'))
+    
+    # Creamos la factura en este preciso instante
+    nueva_factura = Factura(
+        lectura_id=lectura_id,
+        numero_factura=f"REC-{datetime.now().strftime('%Y%m%d%H%M')}",
+        total_a_pagar=total,
+        estado='Pagado', # Se marca pagado de una vez
+        fecha_pago=datetime.now(timezone.utc),
+        metodo_pago='Efectivo'
+    )
+    
+    db.session.add(nueva_factura)
+    db.session.commit()
+    
+    flash("Pago procesado con éxito.", "success")
+    # Aquí redirigiríamos a una versión "Mini" del recibo para impresora térmica
+    return redirect(url_for('modulo_pos'))
+
+@app.route('/pos/pagar-masivo', methods=['POST'])
+@login_required
+def registrar_pago_masivo():
+    predio_id = request.form.get('predio_id')
+    # Volvemos a buscar las lecturas pendientes para procesar el pago
+    lecturas_a_pagar = Lectura.query.filter(
+        Lectura.predio_id == predio_id
+    ).outerjoin(Factura).filter(
+        db.or_(Factura.id == None, Factura.estado != 'Pagado')
+    ).all()
+
+    config = Configuracion.query.first()
+    ahora = datetime.now(timezone.utc)
+    
+    for l in lecturas_a_pagar:
+        # Calculamos el total de ese mes específico
+        consumo = l.consumo_mes
+        basico = min(consumo, config.limite_basico) * config.valor_m3
+        exceso = max(0, consumo - config.limite_basico) * config.valor_m3_exceso
+        total_mes = config.cargo_fijo + basico + exceso
+
+        # Creamos el registro de pago para este mes
+        factura = Factura(
+            lectura_id=l.id,
+            numero_factura=f"REC-{predio_id}-{l.id}-{ahora.strftime('%y%m%d')}",
+            total_a_pagar=total_mes,
+            estado='Pagado',
+            fecha_pago=ahora,
+            metodo_pago='Efectivo'
+        )
+        db.session.add(factura)
+
+    db.session.commit()
+    flash(f"Se han pagado {len(lecturas_a_pagar)} meses correctamente.", "success")
+    return redirect(url_for('modulo_pos'))
+
+@app.route('/pos/confirmar-pago', methods=['POST'])
+@login_required
+def confirmar_pago():
+    predio_id = request.form.get('predio_id')
+    # Recuperamos las lecturas que el operador vio en pantalla
+    lecturas_a_pagar = Lectura.query.filter(
+        Lectura.predio_id == predio_id
+    ).outerjoin(Factura).filter(
+        db.or_(Factura.id == None, Factura.estado != 'Pagado')
+    ).all()
+
+    if not lecturas_a_pagar:
+        flash("No hay meses pendientes para este socio.", "warning")
+        return redirect(url_for('modulo_pos'))
+
+    config = Configuracion.query.first()
+    ahora = datetime.now(timezone.utc)
+    pago_id_grupo = ahora.strftime('%Y%m%d%H%M%S') # ID único para este grupo de meses
+    
+    facturas_generadas_ids = []
+
+    for l in lecturas_a_pagar:
+        # Cálculo exacto por mes
+        consumo = l.consumo_mes
+        basico = min(consumo, config.limite_basico) * config.valor_m3
+        exceso = max(0, consumo - config.limite_basico) * config.valor_m3_exceso
+        total_mes = config.cargo_fijo + basico + exceso
+
+        nueva_factura = Factura(
+            lectura_id=l.id,
+            numero_factura=f"REC-{pago_id_grupo}-{l.id}",
+            total_a_pagar=total_mes,
+            estado='Pagado',
+            fecha_pago=ahora,
+            metodo_pago='Efectivo'
+        )
+        db.session.add(nueva_factura)
+        db.session.flush() # Para obtener el ID antes del commit definitivo
+        facturas_generadas_ids.append(nueva_factura.id)
+
+    db.session.commit()
+    
+    # Redirigimos a la vista de impresión con el grupo de facturas pagadas
+    return redirect(url_for('imprimir_recibo', grupo_id=pago_id_grupo, predio_id=predio_id))
+
+@app.route('/imprimir-recibo/<grupo_id>/<int:predio_id>')
+@login_required
+def imprimir_recibo(grupo_id, predio_id):
+    # Buscamos las facturas que acabamos de generar
+    facturas = Factura.query.filter(Factura.numero_factura.like(f"REC-{grupo_id}-%")).all()
+    predio = Predio.query.get(predio_id)
+    config = Configuracion.query.first()
+    
+    total_pagado = sum(f.total_a_pagar for f in facturas)
+    
+    return render_template('recibo_pago.html', 
+                           facturas=facturas, 
+                           predio=predio, 
+                           config=config, 
+                           total_pagado=total_pagado,
+                           fecha_pago=facturas[0].fecha_pago,
+                           grupo_id=grupo_id)
 
 if __name__ == '__main__':
     app.run(debug=True)

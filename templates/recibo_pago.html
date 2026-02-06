@@ -1,0 +1,69 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container d-flex justify-content-center mt-3">
+    <div class="card p-4 shadow-sm" style="width: 100%; max-width: 500px; border: 1px dashed #000;" id="printableReceipt">
+        <div class="text-center mb-3">
+            <h4 class="fw-bold mb-0">{{ config.nombre_acueducto }}</h4>
+            <p class="small mb-0">NIT: {{ config.nit }}</p>
+            <p class="small">COMPROBANTE DE PAGO OFICIAL</p>
+        </div>
+
+        <div class="row small mb-3">
+            <div class="col-6">
+                <strong>Socio:</strong> {{ predio.dueno.nombre }}<br>
+                <strong>Cuenta:</strong> {{ predio.numero_cuenta }}
+            </div>
+            <div class="col-6 text-end">
+                <strong>Fecha:</strong> {{ fecha_pago.strftime('%d/%m/%Y %H:%M') }}<br>
+                <strong>Recibo N°:</strong> {{ grupo_id }}
+            </div>
+        </div>
+
+        <table class="table table-sm small">
+            <thead class="table-light">
+                <tr>
+                    <th>Periodo</th>
+                    <th>L. Ant / Act</th>
+                    <th class="text-end">Vlr. Mes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set total = 0 %}
+                {% for f in facturas %}
+                <tr>
+                    <td>{{ f.lectura.mes }}/{{ f.lectura.anio }}</td>
+                    <td>{{ f.lectura.lectura_anterior }} - {{ f.lectura.lectura_actual }} ({{ f.lectura.consumo_mes }}m³)</td>
+                    <td class="text-end">$ {{ "{:,.0f}".format(f.total_a_pagar) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="border-top pt-2 mt-2">
+            <div class="d-flex justify-content-between">
+                <span class="fw-bold fs-5">TOTAL PAGADO:</span>
+                <span class="fw-bold fs-5">$ {{ "{:,.0f}".format(total_pagado) }}</span>
+            </div>
+        </div>
+
+        <div class="text-center mt-4 small">
+            <p>¡Gracias por estar al día con el agua!<br>Consérvese este recibo para cualquier reclamo.</p>
+        </div>
+
+        <div class="d-print-none mt-4 text-center">
+            <button onclick="window.print()" class="btn btn-primary">
+                <i class="bi bi-printer"></i> Imprimir Ahora
+            </button>
+            <a href="{{ url_for('modulo_pos') }}" class="btn btn-outline-secondary">Volver al POS</a>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    body * { visibility: hidden; }
+    #printableReceipt, #printableReceipt * { visibility: visible; }
+    #printableReceipt { position: absolute; left: 0; top: 0; border: none !important; width: 100%; }
+}
+</style>
+{% endblock %}
