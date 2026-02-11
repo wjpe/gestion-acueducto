@@ -78,4 +78,16 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+    // Al cargar la página, poner el foco en el buscador automáticamente
+    document.addEventListener("DOMContentLoaded", function() {
+        const input = document.getElementById("search-input");
+        if (input) {
+            input.focus();
+            input.select(); // Selecciona el texto por si hay algo escrito
+        }
+    });
+</script>
+
 {% endblock %}

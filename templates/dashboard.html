@@ -1,0 +1,115 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="list-group shadow-sm">
+            <a href="#" class="list-group-item list-group-item-action active bg-primary border-primary">
+                <i class="bi bi-speedometer2 me-2"></i> Panel Principal
+            </a>
+            <a href="{{ url_for('modulo_pos') }}" class="list-group-item list-group-item-action">
+                <i class="bi bi-cash-stack me-2"></i> Punto de Pago (POS)
+            </a>
+            {% if current_user.rol in ['admin', 'operador'] %}
+            <a href="{{ url_for('carga_masiva') }}" class="list-group-item list-group-item-action">
+                <i class="bi bi-file-earmark-arrow-up me-2"></i> Carga de Lecturas
+            </a>
+            {% endif %}
+            {% if current_user.rol == 'admin' %}
+            <a href="{{ url_for('configurar_tarifas') }}" class="list-group-item list-group-item-action">
+                <i class="bi bi-gear me-2"></i> Configuración de Tarifas
+            </a>
+            <a href="#" class="list-group-item list-group-item-action">
+                <i class="bi bi-people me-2"></i> Gestión de Socios
+            </a>
+            {% endif %}
+            <a href="{{ url_for('logout') }}" class="list-group-item list-group-item-action text-danger">
+                <i class="bi bi-box-arrow-right me-2"></i> Cerrar Sesión
+            </a>
+        </div>
+    </div>
+
+    <div class="col-md-9">
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card bg-gradient bg-primary text-white shadow">
+                    <div class="card-body">
+                        <h6>Recaudo del Mes</h6>
+                        <h3>$ {{ "{:,.0f}".format(recaudo) }}</h3>
+                        <small>Dinero ingresado a caja</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-success text-white shadow">
+                    <div class="card-body">
+                        <h6>Cuentas al Día</h6>
+                        <h3>{{ al_dia }}</h3>
+                        <small>Socios solventes</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-danger text-white shadow">
+                    <div class="card-body">
+                        <h6>Cuentas en Mora</h6>
+                        <h3>{{ mora }}</h3>
+                        <small>Pendientes de cobro</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-7">
+                <div class="card shadow">
+                    <div class="card-header bg-white fw-bold">Histórico de Consumo (m³)</div>
+                    <div class="card-body">
+                        <canvas id="chartConsumo"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="card shadow">
+                    <div class="card-header bg-white fw-bold">Estado de Cartera</div>
+                    <div class="card-body">
+                        <canvas id="chartCartera"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Gráfica de Consumo
+    const ctxConsumo = document.getElementById('chartConsumo').getContext('2d');
+    new Chart(ctxConsumo, {
+        type: 'line',
+        data: {
+            labels: {{ meses|tojson }},
+            datasets: [{
+                label: 'Consumo Total m³',
+                data: {{ consumos|tojson }},
+                borderColor: '#0d6efd',
+                tension: 0.3,
+                fill: true,
+                backgroundColor: 'rgba(13, 110, 253, 0.1)'
+            }]
+        }
+    });
+
+    // Gráfica de Cartera (Dona)
+    const ctxCartera = document.getElementById('chartCartera').getContext('2d');
+    new Chart(ctxCartera, {
+        type: 'doughnut',
+        data: {
+            labels: ['Al Día', 'Mora'],
+            datasets: [{
+                data: [{{ al_dia }}, {{ mora }}],
+                backgroundColor: ['#198754', '#dc3545']
+            }]
+        }
+    });
+</script>
+{% endblock %}

@@ -843,6 +843,47 @@ def imprimir_recibo(grupo_id, predio_id):
                            fecha_pago=facturas[0].fecha_pago,
                            grupo_id=grupo_id)
 
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    ahora = datetime.now(timezone.utc)
+    
+    # --- ESTADÍSTICAS DE CARTERA ---
+    total_cuentas = Predio.query.count()
+    
+    # Cuentas al día: Aquellas que no tienen lecturas sin factura pagada
+    # (Usamos una subconsulta para encontrar predios con deuda)
+    subquery_deuda = db.session.query(Lectura.predio_id).outerjoin(Factura).filter(
+        db.or_(Factura.id == None, Factura.estado != 'Pagado')
+    ).subquery()
+    
+    cuentas_mora = Predio.query.filter(Predio.id.in_(subquery_deuda)).count()
+    cuentas_al_dia = total_cuentas - cuentas_mora
+
+    # --- RECAUDO DEL MES ACTUAL ---
+    recaudo_mes = db.session.query(db.func.sum(Factura.total_a_pagar)).filter(
+        db.func.extract('month', Factura.fecha_pago) == ahora.month,
+        db.func.extract('year', Factura.fecha_pago) == ahora.year,
+        Factura.estado == 'Pagado'
+    ).scalar() or 0
+
+    # --- DATOS PARA GRÁFICA DE CONSUMO (Últimos 6 meses) ---
+    consumo_data = db.session.query(
+        Lectura.mes, 
+        db.func.sum(Lectura.consumo_mes)
+    ).group_by(Lectura.mes).order_by(Lectura.mes.desc()).limit(6).all()
+    
+    # Invertimos para que el orden sea cronológico
+    meses_labels = [f"Mes {d[0]}" for d in consumo_data][::-1]
+    consumos_values = [d[1] for d in consumo_data][::-1]
+
+    return render_template('dashboard.html', 
+                           al_dia=cuentas_al_dia, 
+                           mora=cuentas_mora, 
+                           recaudo=recaudo_mes,
+                           meses=meses_labels,
+                           consumos=consumos_values)
+
 if __name__ == '__main__':
     app.run(debug=True)
 

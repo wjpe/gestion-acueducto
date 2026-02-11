@@ -51,19 +51,40 @@
         </div>
 
         <div class="d-print-none mt-4 text-center">
-            <button onclick="window.print()" class="btn btn-primary">
-                <i class="bi bi-printer"></i> Imprimir Ahora
-            </button>
-            <a href="{{ url_for('modulo_pos') }}" class="btn btn-outline-secondary">Volver al POS</a>
-        </div>
-    </div>
+    <button onclick="imprimirYRegresar()" class="btn btn-primary btn-lg">
+        <i class="bi bi-printer"></i> Imprimir y Volver al POS
+    </button>
+    <a href="{{ url_for('modulo_pos') }}" class="btn btn-outline-secondary btn-lg">Cancelar / Volver</a>
 </div>
 
+<script>
+function imprimirYRegresar() {
+    // 1. Abrimos el diálogo de impresión
+    window.print();
+    
+    // 2. Este evento se dispara después de que la ventana de impresión se cierra
+    // (ya sea porque el usuario imprimió o canceló)
+    window.onafterprint = function() {
+        window.location.href = "{{ url_for('modulo_pos') }}";
+    };
+
+    // Respaldo para navegadores que no soportan onafterprint
+    setTimeout(function() {
+        if (confirm("¿Desea volver al POS para atender a otro socio?")) {
+            window.location.href = "{{ url_for('modulo_pos') }}";
+        }
+    }, 1000);
+}
+</script>
+
 <style>
+/* Ajustes para que el recibo se vea perfecto en papel */
 @media print {
-    body * { visibility: hidden; }
-    #printableReceipt, #printableReceipt * { visibility: visible; }
-    #printableReceipt { position: absolute; left: 0; top: 0; border: none !important; width: 100%; }
+    body { background: white; }
+    .navbar, .d-print-none, .footer { display: none !important; }
+    .card { border: none !important; shadow: none !important; }
+    #printableReceipt { width: 100%; margin: 0; padding: 0; }
 }
 </style>
+
 {% endblock %}
